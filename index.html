@@ -104,6 +104,24 @@
         }
     }
     </script>
+
+      <style>
+        #book-form-wrap{max-width:520px;margin:24px 0}
+        #book-form .bf-field{margin-bottom:16px}
+        #book-form label{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+        #book-form select,
+        #book-form input[type=text],
+        #book-form input[type=email],
+        #book-form input[type=tel]{width:100%;box-sizing:border-box;padding:10px 12px;font-size:15px;border:1px solid #aaa;border-radius:5px;background:#fff;color:#111;font-family:inherit}
+        .bf-counter{display:flex;align-items:center;gap:12px}
+        .bf-counter button{width:36px;height:36px;border:1px solid #aaa;border-radius:50%;background:#fff;font-size:20px;cursor:pointer;line-height:1}
+        .bf-counter span{font-size:18px;font-weight:700;min-width:24px;text-align:center}
+        .bf-guest-name{margin-top:8px}
+        .bf-total{background:#f0f4f0;border-radius:6px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:16px}
+        #book-submit{width:100%;padding:14px;font-size:16px;font-weight:700;background:#2d5a27;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+        #book-submit:disabled{opacity:.7;cursor:not-allowed}
+        #book-err{color:#c00;font-size:14px;margin-top:8px;display:none}
+      </style>
 </head>
 <body>
     <!-- Your existing website content here -->
@@ -176,21 +194,11 @@
     </section>
 
     <section id="book">
-        <h2>Ready?</h2>
-        <h3>Book your workshop</h3>
-        <p>Spots are limited for an intimate, hands-on experience. Choose your Saturday below — Linda receives an instant booking notification by email.</p>
-        <ul>
-            <li>Every Saturday · 10:00 AM – 12:00 PM</li>
-            <li>First available: Saturday 25 July 2026</li>
-            <li>$100 per person · pay on the day</li>
-            <li>19 Yengara Way, Ocean Shores</li>
-        </ul>
-        <a href="tel:+61422879921">📞 Call 0422 879 921</a>
-        <a href="mailto:lindaolsen4healing@outlook.com?subject=Workshop%20booking%20enquiry">✉️ Email Linda</a>
-        <p>10:00 AM – 12:00 PM · 19 Yengara Way, Ocean Shores</p>
-        <p>Linda receives an email notification instantly. You'll see booking confirmation after sending. No payment required now — pay on the day.</p>
-        <p>Something went wrong. Please call <a href="tel:+61422879921">0422 879 921</a> or email Linda directly.</p>
-    </section>
+          <h2>Ready?</h2>
+          <h3>Book & pay for your workshop</h3>
+          <p>Choose your Saturday, enter your guests, and pay securely via Square. Your spot is only confirmed once payment is complete.</p>
+          <div id="book-form-wrap"></div>
+      </section>
 
     <footer>
         <h3>Driftwood Gardens</h3>
@@ -210,5 +218,108 @@
         </ul>
         <p><small>© Linda Olsen · Ocean Shores</small></p>
     </footer>
+
+    <script>
+    (function(){
+      var API = 'https://succulent-saturday-booking--beauevanslangou.replit.app/api';
+      var sessions = (function(){
+        var out=[], start=new Date('2026-07-25T00:00:00Z');
+        for(var i=0;i<12;i++){
+          var d=new Date(start); d.setUTCDate(start.getUTCDate()+i*7);
+          var iso=d.toISOString().split('T')[0];
+          var label=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+          out.push({date:iso,label:label});
+        }
+        return out;
+      })();
+
+      var guestCount=1;
+
+      function render(){
+        var opts=sessions.map(function(s){return '<option value="'+s.date+'">'+s.label+' &middot; 10:00 AM &ndash; 12:00 PM</option>';}).join('');
+        document.getElementById('book-form-wrap').innerHTML=
+          '<form id="book-form" novalidate>'+
+            '<div class="bf-field"><label for="bf-date">Select a date *</label>'+
+              '<select id="bf-date" required><option value="">Choose a Saturday</option>'+opts+'</select></div>'+
+            '<div class="bf-field"><label>Number of guests *</label>'+
+              '<div class="bf-counter"><button type="button" id="bf-minus">&minus;</button>'+
+              '<span id="bf-num">1</span>'+
+              '<button type="button" id="bf-plus">+</button></div>'+
+              '<small style="color:#555;font-size:13px;margin-top:4px;display:block">$100 AUD per person</small></div>'+
+            '<div class="bf-field" id="bf-names-wrap"><label>Guest names *</label>'+
+              '<input class="bf-guest-name" type="text" placeholder="Guest 1 full name" required></div>'+
+            '<hr style="border:none;border-top:1px solid #ddd;margin:20px 0">'+
+            '<div class="bf-field"><label for="bf-name">Your name *</label>'+
+              '<input type="text" id="bf-name" placeholder="Full name" required></div>'+
+            '<div class="bf-field"><label for="bf-email">Email address *</label>'+
+              '<input type="email" id="bf-email" placeholder="you@example.com" required></div>'+
+            '<div class="bf-field"><label for="bf-phone">Phone <span style="font-weight:400;opacity:.7">(optional)</span></label>'+
+              '<input type="tel" id="bf-phone" placeholder="+61 400 000 000"></div>'+
+            '<div class="bf-total"><span>Total to pay</span><strong id="bf-total">$100.00 AUD</strong></div>'+
+            '<button type="submit" id="book-submit">Book &amp; Pay with Square &rarr;</button>'+
+            '<p id="book-err"></p>'+
+          '</form>';
+
+        document.getElementById('bf-minus').onclick=function(){if(guestCount>1){guestCount--;updateGuests();}};
+        document.getElementById('bf-plus').onclick=function(){if(guestCount<50){guestCount++;updateGuests();}};
+        document.getElementById('book-form').onsubmit=submit;
+      }
+
+      function updateGuests(){
+        document.getElementById('bf-num').textContent=guestCount;
+        document.getElementById('bf-total').textContent='
+</html>
++(guestCount*100).toFixed(2)+' AUD';
+        var wrap=document.getElementById('bf-names-wrap');
+        var fields=wrap.querySelectorAll('.bf-guest-name');
+        while(fields.length<guestCount){
+          var inp=document.createElement('input');
+          inp.type='text'; inp.className='bf-guest-name bf-field';
+          inp.placeholder='Guest '+(fields.length+1)+' full name'; inp.required=true;
+          wrap.appendChild(inp);
+          fields=wrap.querySelectorAll('.bf-guest-name');
+        }
+        var all=wrap.querySelectorAll('.bf-guest-name');
+        for(var i=all.length-1;i>=guestCount;i--) all[i].parentNode.removeChild(all[i]);
+        wrap.querySelectorAll('.bf-guest-name').forEach(function(f,i){f.placeholder='Guest '+(i+1)+' full name';});
+      }
+
+      function showErr(msg){var el=document.getElementById('book-err');el.textContent=msg;el.style.display='block';}
+      function hideErr(){var el=document.getElementById('book-err');el.style.display='none';}
+
+      async function submit(e){
+        e.preventDefault(); hideErr();
+        var date=document.getElementById('bf-date').value;
+        var name=document.getElementById('bf-name').value.trim();
+        var email=document.getElementById('bf-email').value.trim();
+        var phone=document.getElementById('bf-phone').value.trim()||null;
+        var names=Array.from(document.querySelectorAll('.bf-guest-name')).map(function(f){return f.value.trim();});
+        if(!date){showErr('Please select a date.');return;}
+        if(names.some(function(n){return!n;})){showErr('Please enter all guest names.');return;}
+        if(!name){showErr('Please enter your name.');return;}
+        if(!email||!/\S+@\S+\.\S+/.test(email)){showErr('Please enter a valid email address.');return;}
+        var btn=document.getElementById('book-submit');
+        btn.textContent='Redirecting to Square…'; btn.disabled=true;
+        try{
+          var res=await fetch(API+'/bookings',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({sessionDate:date,guestNames:names,bookerName:name,bookerEmail:email,bookerPhone:phone})});
+          var data=await res.json();
+          if(!res.ok||!data.checkoutUrl){showErr(data.error||'Something went wrong. Please try again.');btn.textContent='Book & Pay with Square →';btn.disabled=false;return;}
+          window.location.href=data.checkoutUrl;
+        }catch(err){showErr('Network error. Please check your connection and try again.');btn.textContent='Book & Pay with Square →';btn.disabled=false;}
+      }
+
+      render();
+
+      // Show thank-you message if returning from Square
+      if(window.location.search.indexOf('booked=1')!==-1){
+        var msg=document.createElement('div');
+        msg.style.cssText='position:fixed;top:0;left:0;right:0;background:#2d5a27;color:#fff;text-align:center;padding:16px;font-size:16px;z-index:9999';
+        msg.textContent='\u2713 Payment received — your spot is confirmed! A receipt has been sent to your email.';
+        document.body.prepend(msg);
+        history.replaceState(null,'','/');
+      }
+    })();
+    </script>
 </body>
 </html>
