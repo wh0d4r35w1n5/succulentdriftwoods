@@ -1,0 +1,9 @@
+{
+  "name": "succulentdriftwoods",
+  "version": "1.0.0",
+  "description": "Succulent Driftwood Garden Workshops website",
+  "main": "index.html",
+  "dependencies": {
+    "square": "^45.0.1"
+  }
+}

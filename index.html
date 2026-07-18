@@ -124,7 +124,6 @@
       </style>
 </head>
 <body>
-    <!-- Your existing website content here -->
     <nav>
         <a href="#experience">Experience</a>
         <a href="#included">What's Included</a>
@@ -221,7 +220,9 @@
 
     <script>
     (function(){
-      var API = 'https://succulent-saturday-booking--beauevanslangou.replit.app/api';
+      // Netlify function endpoint
+      var API = '/.netlify/functions/create-square-checkout';
+      
       var sessions = (function(){
         var out=[], start=new Date('2026-07-25T00:00:00Z');
         for(var i=0;i<12;i++){
@@ -267,9 +268,7 @@
 
       function updateGuests(){
         document.getElementById('bf-num').textContent=guestCount;
-        document.getElementById('bf-total').textContent='
-</html>
-+(guestCount*100).toFixed(2)+' AUD';
+        document.getElementById('bf-total').textContent='$' + (guestCount*100).toFixed(2)+' AUD';
         var wrap=document.getElementById('bf-names-wrap');
         var fields=wrap.querySelectorAll('.bf-guest-name');
         while(fields.length<guestCount){
@@ -301,8 +300,8 @@
         var btn=document.getElementById('book-submit');
         btn.textContent='Redirecting to Square…'; btn.disabled=true;
         try{
-          var res=await fetch(API+'/bookings',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({sessionDate:date,guestNames:names,bookerName:name,bookerEmail:email,bookerPhone:phone})});
+          var res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({quantity:guestCount,sessionDate:date,guestNames:names,bookerName:name,bookerEmail:email,bookerPhone:phone})});
           var data=await res.json();
           if(!res.ok||!data.checkoutUrl){showErr(data.error||'Something went wrong. Please try again.');btn.textContent='Book & Pay with Square →';btn.disabled=false;return;}
           window.location.href=data.checkoutUrl;
