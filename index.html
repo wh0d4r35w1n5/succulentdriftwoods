@@ -61,49 +61,6 @@
         ]
     }
     </script>
-    
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "Event",
-        "name": "Succulent Driftwood Garden Workshop",
-        "description": "Create your own unique driftwood and succulent living sculpture in this hands-on workshop",
-        "url": "https://succulentdriftwoods.com.au",
-        "startDate": "2026-07-25T10:00:00+10:00",
-        "endDate": "2026-07-25T12:00:00+10:00",
-        "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-        "eventStatus": "https://schema.org/EventScheduled",
-        "location": {
-            "@type": "Place",
-            "name": "19 Yengara Way, Ocean Shores",
-            "address": {
-                "@type": "PostalAddress",
-                "streetAddress": "19 Yengara Way",
-                "addressLocality": "Ocean Shores",
-                "addressRegion": "NSW",
-                "postalCode": "2483",
-                "addressCountry": "AU"
-            }
-        },
-        "organizer": {
-            "@type": "Person",
-            "name": "Linda Olsen",
-            "telephone": "+61422879921",
-            "email": "lindaolsen4healing@outlook.com"
-        },
-        "offers": {
-            "@type": "Offer",
-            "price": "100",
-            "priceCurrency": "AUD",
-            "availability": "https://schema.org/InStock",
-            "validFrom": "2026-07-10"
-        },
-        "performer": {
-            "@type": "Person",
-            "name": "Linda Olsen"
-        }
-    }
-    </script>
 
       <style>
         #book-form-wrap{max-width:520px;margin:24px 0}
@@ -220,9 +177,14 @@
 
     <script>
     (function(){
-      // Netlify function endpoint
-      var API = '/.netlify/functions/create-square-checkout';
+      var paymentLinks = null;
       
+      // Load pre-generated payment links
+      fetch('payment_links.json')
+        .then(res => res.json())
+        .then(data => { paymentLinks = data; })
+        .catch(err => console.error('Error loading payment links:', err));
+
       var sessions = (function(){
         var out=[], start=new Date('2026-07-25T00:00:00Z');
         for(var i=0;i<12;i++){
@@ -262,7 +224,7 @@
           '</form>';
 
         document.getElementById('bf-minus').onclick=function(){if(guestCount>1){guestCount--;updateGuests();}};
-        document.getElementById('bf-plus').onclick=function(){if(guestCount<50){guestCount++;updateGuests();}};
+        document.getElementById('bf-plus').onclick=function(){if(guestCount<10){guestCount++;updateGuests();}};
         document.getElementById('book-form').onsubmit=submit;
       }
 
@@ -286,26 +248,28 @@
       function showErr(msg){var el=document.getElementById('book-err');el.textContent=msg;el.style.display='block';}
       function hideErr(){var el=document.getElementById('book-err');el.style.display='none';}
 
-      async function submit(e){
+      function submit(e){
         e.preventDefault(); hideErr();
         var date=document.getElementById('bf-date').value;
         var name=document.getElementById('bf-name').value.trim();
         var email=document.getElementById('bf-email').value.trim();
-        var phone=document.getElementById('bf-phone').value.trim()||null;
         var names=Array.from(document.querySelectorAll('.bf-guest-name')).map(function(f){return f.value.trim();});
+        
         if(!date){showErr('Please select a date.');return;}
         if(names.some(function(n){return!n;})){showErr('Please enter all guest names.');return;}
         if(!name){showErr('Please enter your name.');return;}
         if(!email||!/\S+@\S+\.\S+/.test(email)){showErr('Please enter a valid email address.');return;}
+        
+        if(!paymentLinks || !paymentLinks[date] || !paymentLinks[date][guestCount]){
+          showErr('Payment links are still loading or unavailable for this date. Please try again in a moment.');
+          return;
+        }
+
         var btn=document.getElementById('book-submit');
         btn.textContent='Redirecting to Square…'; btn.disabled=true;
-        try{
-          var res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({quantity:guestCount,sessionDate:date,guestNames:names,bookerName:name,bookerEmail:email,bookerPhone:phone})});
-          var data=await res.json();
-          if(!res.ok||!data.checkoutUrl){showErr(data.error||'Something went wrong. Please try again.');btn.textContent='Book & Pay with Square →';btn.disabled=false;return;}
-          window.location.href=data.checkoutUrl;
-        }catch(err){showErr('Network error. Please check your connection and try again.');btn.textContent='Book & Pay with Square →';btn.disabled=false;}
+        
+        // Redirect to the pre-generated Square payment link
+        window.location.href = paymentLinks[date][guestCount];
       }
 
       render();
